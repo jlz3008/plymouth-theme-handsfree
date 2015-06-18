@@ -1,0 +1,754 @@
+// The Process Installation Plytmouth Theme (TPIPT)
+//
+// This plymouth theme is oriented to ease the creation of
+// USB sticks for proccess as installation, check process 
+// width Syslinux.
+//
+// Please read the Readme file 
+
+
+//-----------------------------------------------------
+//--------------- Overload Window object --------------
+//-----------------------------------------------------
+
+/** --------------------------------------------
+ * Helper overload to apply background colors from 
+ * global.palette to the Window
+ */
+Window.ApplyBackgroundColors = fun(palette) {
+    Window.SetBackgroundTopColor(palette.background.top.red,
+                                 palette.background.top.green,
+                                 palette.background.top.blue);
+    Window.SetBackgroundBottomColor(palette.background.bottom.red,
+                                    palette.background.bottom.green,
+                                    palette.background.bottom.blue);
+};
+
+//---------------------------------------------------------------------------
+// ------------------------------- Classes ---------------------------------- 
+//---------------------------------------------------------------------------
+
+// -------------------------------- Fonts ---------------------------------- 
+/**
+ * General purpouse Font/Color container to hold colors, opacity and font size
+ */
+Font = fun(red, green, blue,opacity,font) {
+    local.color = [];
+    color.red = red;
+    color.green = green;
+    color.blue = blue;
+    color.opacity = opacity;
+    color.font = font;
+    return color | global.Font;
+} | [];
+
+/** ----------------------------------------------
+ * General purpose function to create an image from a string.
+ * \param text the string to print
+ * \param f the Font to write the string 
+ * \returns Image containg the text
+ */
+fun WriteText(text, f) 
+{
+    return Image.Text(text, f.red, f.green, f.blue,f.opacity, f.font);
+}
+
+//---------------------------------------------------------------------------
+// --------------------------------- Debug ---------------------------------- 
+//---------------------------------------------------------------------------
+debug_console.lines = [];
+debug_console.numLines=0;
+debug_console.maxLines=50;
+
+fun Debug(text) 
+{
+    local.i=0;
+    if(debug_console.numLines >= debug_console.maxLines)
+    {
+// Scroll up      
+      for(i=1; i < debug_console.numLines;i++)
+      {
+	  debug_console.lines[i].sprite.SetPosition(0, (i-1) * debug_console.lines[i].image.GetHeight() , 1);
+	  debug_console.lines[i-1].image = debug_console.lines[i].image;
+	  debug_console.lines[i-1].sprite = debug_console.lines[i].sprite;
+      }
+    }
+    else	
+      debug_console.numLines++;
+    
+    i=debug_console.numLines-1;
+    
+    local.normalFont = Font(1, 0, 0,1,"Sans 12");
+
+    debug_console.lines[i].image = WriteText(text,normalFont);
+    debug_console.lines[i].sprite=Sprite();
+    debug_console.lines[i].sprite.SetImage(debug_console.lines[i].image);
+    debug_console.lines[i].sprite.SetPosition(0, i * debug_console.lines[i].image.GetHeight() , 1);
+}
+
+//----------------------------------------------------------------------
+// --------------------------------- String ----------------------------
+//----------------------------------------------------------------------
+fun StringString(string, substring) 
+{
+    start = 0;
+    while (String(string).CharAt (start)) 
+    {
+        walk = 0;
+        while (String(substring).CharAt (walk) == String(string).CharAt (start + walk) ) 
+	{
+            walk++;
+            if (!String(substring).CharAt (walk)) return start;
+        }
+        start++;
+    }
+
+    return NULL;
+}
+//----------------------------------------------------------------------
+fun StringLength (string) 
+{
+    index = 0;
+    while (String(string).CharAt(index))
+        index++;
+    return index;
+}
+//----------------------------------------------------------------------
+fun StringCopy (source, beginning, end) 
+{
+    local.destination = "";
+    for (index = beginning; ( ( (end == NULL) || (index <= end) ) && (String(source).CharAt(index)) ); index++) {
+        local.destination += String(source).CharAt(index);
+    }
+    
+    return local.destination;
+}
+//----------------------------------------------------------------------
+fun StringReplace (source, pattern, replacement) 
+{
+    local.found = StringString(source, pattern);
+    if (local.found == NULL) 
+    {
+        return source;
+    }
+
+    local.new_string = StringCopy (source, 0, local.found - 1) +
+                       replacement +
+                       StringCopy (source, local.found + StringLength(pattern), NULL);
+
+    return local.new_string;
+}
+//----------------------------------------------------------------------
+fun DigitToInteger (charac) 
+{
+  
+  local.Result = 9;
+  
+  for(Result = 9; Result >= 0;Result--)
+    if( Result+"" == charac)
+      break;
+  return Result;
+}  
+//----------------------------------------------------------------------
+fun StringToInteger (str) 
+{
+    local.Result = -1;
+    local.mult=1;
+
+    if(str.CharAt(0) == "-")
+    {
+      local.mult=-1;
+      str = StringCopy(str,1);
+    }
+    
+    while(StringLength(str) > 0)
+    {
+      local.digit=str.CharAt(0);
+      local.numDigit=DigitToInteger(local.digit);
+      
+      if(local.numDigit == -1)
+	break;
+      
+      if(Result == -1)
+	Result = local.numDigit;
+      else
+	Result = (Result * 10) + local.numDigit;
+      
+      str = StringCopy(str,1);
+    }
+
+    if( Result != -1)
+      Result *= local.mult;
+    
+    return Result;
+}
+
+//-----------------------------------------------------
+//------------------Class Scene--------------------------
+//-----------------------------------------------------
+
+Scene = fun(x,y,width,height) 
+{
+    local.scene.x =x;
+    local.scene.y = y;
+    local.scene.width = width;
+    local.scene.height = height;
+    
+    return scene | global.Scene;
+} | [];
+
+//-----------------------------------------------------
+//------------------Class Console--------------------------
+//-----------------------------------------------------
+// 
+
+Console = fun(scene,normalFont,titleFont,lastlineFont,bigFont,align) 
+{
+    local.console = [];
+    
+    console.scene = scene;
+    console.text = [];
+    console.title = [];
+    console.lastline = [];
+    console.big = [];
+
+    console.text.font = normalFont;
+    console.title.font = titleFont;
+    console.lastline.font = lastlineFont;
+    console.big.font = bigFont;
+    
+    if(!align)
+      console.align = 0;
+    else
+      console.align = align;
+    
+    console.title.x = 0;
+    console.title.y = 0;
+    console.title.text = "";
+
+    console.lastline.x = 0;
+    console.lastline.y = 0;
+    console.lastline.text = "";
+    
+    console.big.x = 0;
+    console.big.y = 0;
+    console.big.text = "";
+
+    console.text.lines = [];
+    console.text.numLines = 0;
+
+    console.title.height = WriteText("AfpqtM",console.title.font).GetHeight();
+    console.text.height = WriteText("AfpqtM",console.text.font).GetHeight();
+    console.lastline.height = WriteText("AfpqtM",console.lastline.font).GetHeight();
+    console.big.height = WriteText("AfpqtM",console.big.font).GetHeight();
+
+    console.text.maxNumLines = Math.Int((scene.height - console.title.height - console.lastline.height) / console.text.height);
+
+    return console | global.Console;
+} | [];
+//-----------------------------------------------------
+Console.Clear=fun()
+{
+    this.Hide();
+    this.SetTitle("");
+    this.numLines=0;
+    this.SetLastline("");
+};
+//-----------------------------------------------------
+Console.SetTitle=fun(text)
+{
+  this.title.text = text;  
+  this.title.sprite = Sprite();
+  
+  this.title.image = WriteText(this.title.text,this.title.font);
+  this.title.sprite.SetImage(this.title.image);
+  
+  this.title.width = this.title.image.GetWidth();
+  
+  //     Center the line horizontally
+  this.title.x = this.scene.x + this.scene.width / 2 - this.title.width / 2;
+  this.title.y = this.scene.y ; 
+  
+  this.title.sprite.SetPosition(this.title.x,this.title.y,0);
+};
+//-----------------------------------------------------
+Console.SetLastLine=fun(text)
+{
+  this.lastline.text = text;  
+  this.lastline.sprite = Sprite();
+  
+  this.lastline.image = WriteText(this.lastline.text ,this.lastline.font);
+  this.lastline.sprite.SetImage(this.lastline.image);
+
+  this.lastline.width = this.lastline.image.GetWidth();
+
+  this.lastline.x = this.scene.x + this.align ;
+  this.lastline.y = this.scene.y + this.scene.height - this.lastline.height  ;
+  
+  this.lastline.sprite.SetPosition(this.lastline.x,this.lastline.y,0);
+  this.lastline.sprite.SetOpacity(1);
+};
+//-----------------------------------------------------
+Console.SetBig=fun(text)
+{
+// Show Title and Big text only
+  this.HideLastLine();
+  this.HideText();
+
+  this.big.text = text;  
+  this.big.sprite=Sprite();
+  
+  this.big.image = WriteText(this.big.text,this.big.font);
+  this.big.sprite.SetImage(this.big.image);
+
+  this.big.width = this.big.image.GetWidth();
+
+// Centered on scene
+  this.big.x = this.scene.x + this.scene.width / 2 - this.big.width / 2;
+// Centered on text scene
+  this.big.y = this.scene.y + (this.scene.height - this.title.height )/2 + this.title.height -  this.big.height  ;
+  
+  this.big.sprite.SetPosition(this.big.x,this.big.y,1);
+  this.big.sprite.SetOpacity(1);
+};
+//-----------------------------------------------------
+Console.AddLine=fun(text)
+{
+  local.i=0;
+  
+  this.HideBig();
+
+  if(this.text.numLines >= this.text.maxNumLines)
+  {
+// Scroll up      
+    for(i=1; i < this.text.numLines;i++)
+    {
+      this.text.lines[i].x = this.scene.x + this.align;
+      this.text.lines[i].y = this.scene.y + this.title.height +(i-1) * this.text.height;
+      this.text.lines[i].sprite.SetPosition(this.text.lines[i].x , this.text.lines[i].y , 1);
+      this.text.lines[i-1].image = this.text.lines[i].image;
+      this.text.lines[i-1].sprite = this.text.lines[i].sprite;
+      this.text.lines[i-1].sprite.SetOpacity(1);
+    }
+  }
+  else	
+    this.text.numLines++;
+    
+  i = this.text.numLines-1;
+
+// the last text line text will be last lastline text. ;-)
+  if(i != 0) 
+  {
+    this.text.lines[i].text = this.lastline.text;
+    this.text.lines[i].sprite = Sprite();
+  
+    this.text.lines[i].image = WriteText(this.lastline.text , this.normalFont);
+    this.text.lines[i].sprite.SetImage(this.text.lines[i].image);
+    this.text.lines[i].x = this.scene.x + this.align;
+    this.text.lines[i].y = this.scene.y + this.title.height + i * this.text.height;
+    this.text.lines[i].sprite.SetPosition(this.text.lines[i].x , this.text.lines[i].y , 1);
+    this.text.lines[i].sprite.SetOpacity(1);
+  }
+
+// The new text will be the last line text
+  this.SetLastLine(text);
+};  
+//-----------------------------------------------------
+Console.HideBig=fun(text)
+{
+    if(this.big.sprite)
+      this.big.sprite.SetOpacity(0);
+};
+//-----------------------------------------------------
+Console.HideLastLine=fun(text)
+{
+    if(this.lastline.sprite)
+      this.lastline.sprite.SetOpacity(0);
+
+};
+//-----------------------------------------------------
+Console.HideText=fun(text)
+{
+  local.i=0;
+  for(i=0 ;i < this.text.numLines; i++)
+  {
+    if(this.text.lines[i].sprite)
+      this.text.lines[i].sprite.SetOpacity(0);
+  }
+};
+//-----------------------------------------------------
+Console.Hide=fun()
+{
+  local.i=0;
+  this.title.sprite.SetOpacity(0);
+  this.HideText();
+  this.HideLastLine();
+  this.HideBig();
+};
+//-----------------------------------------------------
+Console.Show=fun()
+{
+  this.title.sprite.SetOpacity(1);
+  for(i=0;i<this.text.numLines;i++)
+    this.lines[i].sprite.SetOpacity(1);
+  this.lastline.sprite.SetOpacity(1);
+};
+//-----------------------------------------------------
+Console.LeftAlign=fun(margin)
+{
+  this.align = margin;
+};
+
+//-----------------------------------------------------
+Application = fun()
+{
+// public:
+  local.app.Logo = [];
+  local.app.Background = [];
+  local.app.Console = [];
+// private:
+  local.app.scene = [];
+  local.app.ratioX = 1;
+  local.app.ratioY = 1;
+  return local.app | global.Application;
+} | [];
+  
+//-----------------------------------------------------
+Application.SetRatio=fun(x,y)
+{
+  this.ratioX = x;
+  this.ratioY = y;
+};
+//-----------------------------------------------------
+Application.RatioX=fun()
+{
+  return this.ratioX;
+};
+//-----------------------------------------------------
+Application.RatioY=fun()
+{
+  return this.ratioY;
+};
+//-----------------------------------------------------
+Application.LeftAlign=fun(margin)
+{
+	this.Console.LeftAlign(margin);
+};
+//-----------------------------------------------------
+Application.Refresh=fun()
+{
+  if(this.Logo)
+    this.Logo.Refresh();
+};
+//-----------------------------------------------------
+Application.Hide=fun()
+{
+    this.Console.Hide();
+// Logo is not affected by Application Hide    
+};
+//-----------------------------------------------------
+Application.Show=fun()
+{
+    this.Console.Show();
+// Application Shown don't  show  Logo
+// You can show and hide Logo sending logo.show or logo.hide
+// message    
+};
+//-----------------------------------------------------
+Application.Clear=fun()
+{
+	this.Console.Clear();
+};
+//-----------------------------------------------------
+Application.SetBig=fun(title)
+{
+	this.Console.SetBig(title);
+};
+//-----------------------------------------------------
+Application.SetTitle=fun(title)
+{
+	this.Console.SetTitle(title);
+};
+//-----------------------------------------------------
+Application.AddLine=fun(text)
+{
+	this.Console.AddLine(text);
+};
+//-----------------------------Background------------------------
+Background = fun(filename) 
+{
+    local.bg.image = Image(filename).Scale(Window.GetWidth(),Window.GetHeight());
+    local.bg.sprite = Sprite(local.bg.image);
+    local.bg.sprite.SetX(0);
+    local.bg.sprite.SetY(0);
+    local.bg.sprite.SetZ(-1000);
+    
+    return local.bg | global.Background;
+    
+} | [];
+//----------------- Logo------------------------------------
+Logo = fun(filename,x,y) 
+{
+    local.logo.Flash=[];
+    local.logo.image = Image(filename);
+    local.logo.sprite = Sprite(local.logo.image);
+    
+    if(x == -1) //center
+      x = Window.GetWidth()/2 - local.logo.image.GetWidth()/2 ;
+    if(y == -1) //center
+      y = Window.GetHeight()/2;- local.logo.image.GetHeight()/2 ;
+   
+    local.logo.sprite.SetPosition(x,y,2);
+    
+   return local.logo | global.Logo;
+} | [];
+//-----------------------------------------------------
+Logo.SetOpacity=fun(opacity)
+{
+   this.sprite.SetOpacity (opacity);
+};
+//-----------------------------------------------------
+Logo.Show=fun()
+{
+    this.Stop();
+    this.SetOpacity(1);
+};
+//-----------------------------------------------------
+Logo.Hide=fun()
+{
+    this.Stop();
+    this.SetOpacity(0);
+};
+//-----------------------------------------------------
+Logo.Animate=fun()
+{
+  if( this.Flash )
+      this.Flash.angle = 0 ;
+};
+//-----------------------------------------------------
+Logo.Stop=fun()
+{
+  if( this.Flash )
+      this.Flash.angle = -1 ;
+};
+//-----------------------------------------------------
+Logo.SetFlash=fun(minOpacity,freq)
+{
+      this.Flash.angle = 0 ;
+      this.Flash.minOpacity = minOpacity;
+      this.Flash.freq = freq;
+};
+//-----------------------------------------------------
+Logo.Refresh=fun()
+{
+  if(this.Flash && this.Flash.angle >= 0)
+  {
+// Flashing the Logo. It's supposed this function is executed each refresh (50 times each second)
+        this.Flash.angle += ((2 * 3.14) / 50) * this.Flash.freq;
+        local.opacity = (Math.Cos(this.Flash.angle) + 1) / 2;
+        opacity *= 1 - this.Flash.minOpacity;
+        opacity += this.Flash.minOpacity;
+        this.SetOpacity(opacity);
+  }
+};
+
+//-------------------------------------------------------------------------
+//------------------------ Plymouth hooks ---------------------------------
+//-------------------------------------------------------------------------
+  
+//---------------------------- Display password --------------------------
+fun root_mounted_callback()
+{
+}
+// Not used here
+// Plymouth.SetRootMountedFunction(display_password_callback);
+//---------------------------- Display password ---------------------------
+fun display_password_callback (prompt, bullets)
+{
+}
+// Not used here
+// Plymouth.SetDisplayPasswordFunction(display_password_callback);
+//---------------------------- Display Lastline---------------------------
+fun display_lastline_callback (prompt, content)
+{
+}
+// Not used here
+// Plymouth.SetDisplayLastlineFunction(display_lastline_callback);
+
+//----------------------------------------------------------------------
+fun refresh_callback ()
+{
+  MyApp.Refresh();
+}
+Plymouth.SetRefreshFunction (refresh_callback);
+
+// ...................restore normal display .............................
+fun display_normal_callback ()
+{
+  MyApp.Hide();
+}
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+
+//------------------------------- Quit --------------------------------
+fun quit_callback ()
+{
+  MyApp.Hide();
+  MyApp.Logo.Show(1);
+}
+Plymouth.SetQuitFunction(quit_callback);
+
+//--------------------------- Keyboard --------------------------------
+fun fkeyboard(key)
+{
+//  Debug("Key = "+key);
+}
+Plymouth.SetKeyboardInputFunction(fkeyboard);
+//------------------------ Status Callback ------------------------------
+// The status callback is used here for adding screens to screen container. 
+// Status name now is the screen name id
+// If screen is not exist, a new window is created and the new screen 
+// is the actual screen
+// If screen exist, no screen is created and screen is the actual screen.
+fun update_status(st)
+{
+  global.status = st;
+
+  MyApp.AddScreen(st);
+}
+Plymouth.SetUpdateStatusFunction(update_status);
+
+// --------------------------- Message callback-------------
+// The old message callback now is used to send commands to screen container
+// the message is formated as "command:parameters"
+// if no command, parameters is used to add a line to container's actual screen.
+//
+fun message_callback (message)
+{
+    if (!message || (message == ""))
+    {
+      MyApp.Clear();
+      return;
+    }
+
+    local.substring = "leftAlign:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	message = StringCopy (message, local.ssposition + StringLength(local.substring), NULL);
+	MyApp.LeftAlign(StringToInteger(message));
+	return;
+    }
+
+    local.substring = "logo.animate:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	MyApp.Logo.Animate();
+	return;
+    }
+
+    local.substring = "logo.show:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	MyApp.Logo.Show();
+	return;
+    }
+
+    local.substring = "logo.hide:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	MyApp.Logo.Hide();
+	return;
+    }
+        
+    local.substring = "show:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	MyApp.Show();
+	return;
+    }
+
+    local.substring = "hide:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	MyApp.Hide();
+	return;
+    }
+
+    local.substring = "title:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	message = StringCopy (message, local.ssposition + StringLength(local.substring), NULL);
+	MyApp.SetTitle(message);
+	return;
+    }
+
+    local.substring = "big:";
+    local.ssposition = StringString(message, local.substring);
+    if (local.ssposition != NULL)
+    {
+	message = StringCopy (message, local.ssposition + StringLength(local.substring), NULL);
+	MyApp.SetBig(message);
+	return;
+    }
+        
+    MyApp.AddLine(message);
+}
+Plymouth.SetMessageFunction (message_callback);
+
+
+//----------------------------------------------------------------------
+//------------------------- Script Configuration -----------------------
+//----------------------------------------------------------------------
+
+//-------------------- The Application Object ------------------------------
+
+MyApp = Application();
+
+//-------------------- The Application Setup  ------------------------------
+
+fun SetupApp()
+{
+  local.palette = [];
+// This Font palette are used for print text and background 
+  palette.background.top = Font(1, 1, 1); // used as only color
+  palette.background.bottom = palette.background.top;
+
+// --------------------------------- Window ---------------------------------- 
+// Apply palette defined colors to background if you don't want set a image
+  Window.ApplyBackgroundColors(palette);
+
+//---------------------------- Ratio -----------------------------------
+// It's better for me  think on percentage of screen, so for diferent
+// monitor resolutions all text are printed on same relative position
+// If you want other scale for text positioning you can change those 
+// values
+  MyApp.SetRatio(Window.GetWidth() / 100, Window.GetHeight() / 100);
+
+//---------------------------- scene -----------------------------------
+// The scene is the box where the title, texts and lastline are printed on pixel units
+  local.scene = Scene( 13.5 * MyApp.RatioX(),   
+		       50   * MyApp.RatioY(),   
+		       86.5 * MyApp.RatioX(),   
+		       27   * MyApp.RatioY());  
+  
+  local.normalFont = Font(1, 0, 0,1,"Sans 12");
+  local.titleFont = Font(0, 1, 1,1,"Sans 20");
+  local.lastlineFont = Font(0, 0, 1,1,"Sans 24");
+  local.bigFont = Font(1, 0, 1,1,"Sans 40");
+
+  MyApp.Console = Console(scene,normalFont,titleFont,lastlineFont,bigFont,40);
+
+  MyApp.Background = Background("background.png");
+
+  MyApp.Logo = Logo("logo.png",50 * MyApp.RatioX(),40*MyApp.RatioY());
+  MyApp.Logo.SetFlash(0.1,0.2);
+}
+
+SetupApp();
+

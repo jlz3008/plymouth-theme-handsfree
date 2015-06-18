@@ -1,0 +1,86 @@
+#!/bin/bash
+plymouth show-splash
+
+# Clear the console
+plymouth message --text="" 
+plymouth message --text="title:Now we are installing system arts"
+plymouth message --text="Art one installed"
+sleep 2
+plymouth message --text="Art two installed"
+sleep 2
+plymouth message --text="Art three installed"
+sleep 2
+plymouth message --text="Art fort installed"
+sleep 2
+plymouth message --text="Art five installed"
+sleep 2
+plymouth message --text="Art six installed"
+sleep 2
+plymouth message --text="Art seven installed"
+sleep 2
+plymouth message --text="title:Now we are installing system flowers"
+plymouth message --text="Flower one installed"
+sleep 2
+plymouth message --text="Flower two installed"
+sleep 2
+plymouth message --text="Flower three installed"
+sleep 2
+plymouth message --text="Flower fort installed"
+sleep 2
+plymouth message --text="Flower five installed"
+sleep 2
+plymouth message --text="Flower six installed"
+sleep 2
+plymouth message --text="Flower seven installed"
+sleep 2
+
+plymouth message --text="title:Now we are hiding the console"
+plymouth message --text="3"
+sleep 2
+plymouth message --text="2"
+sleep 2
+plymouth message --text="1"
+sleep 2
+plymouth message --text="ignition"
+sleep 2
+plymouth message --text="hide:"
+sleep 5
+plymouth message --text="show:"
+
+plymouth message --text="leftAlign:400"
+
+plymouth message --text="title:Now a big text"
+plymouth message --text="3"
+sleep 2
+plymouth message --text="2"
+sleep 2
+plymouth message --text="1"
+sleep 2
+plymouth message --text="ignition"
+sleep 2
+plymouth message --text="big:The big text"
+sleep 6
+plymouth message --text="Finish the big"
+
+plymouth message --text="title:Now we are installing system pet"
+plymouth message --text="Pet one installed"
+sleep 2
+plymouth message --text="Pet two installed"
+sleep 2
+plymouth message --text="Pet three installed"
+sleep 2
+plymouth message --text="Pet fort installed"
+sleep 2
+plymouth message --text="Pet five installed"
+sleep 2
+plymouth message --text="Pet six installed"
+sleep 2
+plymouth message --text="Pet seven installed"
+sleep 2
+
+plymouth message --text="hide:"
+sleep 5
+
+plymouth hide-splash
+
+
