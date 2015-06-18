@@ -603,20 +603,6 @@ fun fkeyboard(key)
 //  Debug("Key = "+key);
 }
 Plymouth.SetKeyboardInputFunction(fkeyboard);
-//------------------------ Status Callback ------------------------------
-// The status callback is used here for adding screens to screen container. 
-// Status name now is the screen name id
-// If screen is not exist, a new window is created and the new screen 
-// is the actual screen
-// If screen exist, no screen is created and screen is the actual screen.
-fun update_status(st)
-{
-  global.status = st;
-
-  MyApp.AddScreen(st);
-}
-Plymouth.SetUpdateStatusFunction(update_status);
-
 // --------------------------- Message callback-------------
 // The old message callback now is used to send commands to screen container
 // the message is formated as "command:parameters"
